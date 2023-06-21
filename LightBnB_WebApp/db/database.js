@@ -2,22 +2,31 @@ const properties = require("./json/properties.json");
 const users = require("./json/users.json");
 
 /// Users
+const { Pool } = require('pg');
 
-/**
- * Get a single user from the database given their email.
- * @param {String} email The email of the user.
- * @return {Promise<{}>} A promise to the user.
- */
-const getUserWithEmail = function (email) {
-  let resolvedUser = null;
-  for (const userId in users) {
-    const user = users[userId];
-    if (user?.email.toLowerCase() === email?.toLowerCase()) {
-      resolvedUser = user;
-    }
-  }
-  return Promise.resolve(resolvedUser);
-};
+const pool = new Pool({
+  user: 'vagrant',
+  password: '123',
+  host: 'localhost',
+  database: 'lightbnb'
+});
+
+
+// /**
+//  * Get a single user from the database given their email.
+//  * @param {String} email The email of the user.
+//  * @return {Promise<{}>} A promise to the user.
+//  */
+// const getUserWithEmail = function (email) {
+//   let resolvedUser = null;
+//   for (const userId in users) {
+//     const user = users[userId];
+//     if (user?.email.toLowerCase() === email?.toLowerCase()) {
+//       resolvedUser = user;
+//     }
+//   }
+//   return Promise.resolve(resolvedUser);
+// };
 
 /**
  * Get a single user from the database given their id.
@@ -59,12 +68,16 @@ const getAllReservations = function (guest_id, limit = 10) {
  * @param {*} limit The number of results to return.
  * @return {Promise<[{}]>}  A promise to the properties.
  */
-const getAllProperties = function (options, limit = 10) {
-  const limitedProperties = {};
-  for (let i = 1; i <= limit; i++) {
-    limitedProperties[i] = properties[i];
-  }
-  return Promise.resolve(limitedProperties);
+const getAllProperties = (options, limit = 10) => {
+  return pool
+    .query(`SELECT * FROM properties LIMIT $1`, [limit])
+    .then((result) => {
+      console.log(result.rows);
+      return result.rows;
+    })
+    .catch((err) => {
+      console.log(err.message);
+    });
 };
 
 /**
@@ -80,7 +93,7 @@ const addProperty = function (property) {
 };
 
 module.exports = {
-  getUserWithEmail,
+  // getUserWithEmail,
   getUserWithId,
   addUser,
   getAllReservations,
