@@ -207,10 +207,6 @@ const addProperty = function (property) {
 };
 
 
-
-
-
-
 module.exports = {
   getUserWithEmail,
   getUserWithId,
