@@ -99,17 +99,65 @@ const getAllReservations = function (guest_id, limit = 10) {
  * @param {*} limit The number of results to return.
  * @return {Promise<[{}]>}  A promise to the properties.
  */
-const getAllProperties = (options, limit = 10) => {
-  return pool
-    .query(`SELECT * FROM properties LIMIT $1`, [limit])
-    .then((result) => {
-      console.log(result.rows);
-      return result.rows;
-    })
-    .catch((err) => {
-      console.log(err.message);
-    });
+const getAllProperties = function(options, limit = 10) {
+  const queryParams = [];
+  let queryString = `
+    SELECT properties.*, AVG(property_reviews.rating) as average_rating
+    FROM properties
+    LEFT JOIN property_reviews ON properties.id = property_id
+  `;
+
+  const conditions = [];
+  let paramNum = 1;
+
+  // Add conditions to the query based on which options are present
+  if (options.city) {
+    queryParams.push(`%${options.city}%`);
+    conditions.push(`city LIKE $${paramNum++}`);
+  }
+
+  if (options.owner_id) {
+    queryParams.push(options.owner_id);
+    conditions.push(`owner_id = $${paramNum++}`);
+  }
+
+  if (options.minimum_price_per_night && options.maximum_price_per_night) {
+    queryParams.push(options.minimum_price_per_night * 100, options.maximum_price_per_night * 100);
+    conditions.push(`cost_per_night BETWEEN $${paramNum++} AND $${paramNum++}`);
+  }
+
+  // Append all conditions, properly chained with AND
+  if (conditions.length) {
+    queryString += ` WHERE ${conditions.join(' AND ')} `;
+  }
+
+  // Add a GROUP BY clause after all WHERE conditions
+  queryString += `GROUP BY properties.id `;
+
+  if (options.minimum_rating) {
+    queryParams.push(options.minimum_rating);
+    queryString += `HAVING AVG(property_reviews.rating) >= $${paramNum++} `;
+  }
+
+  // Add the ORDER BY and LIMIT clauses
+  queryParams.push(limit);
+  queryString += `
+    ORDER BY cost_per_night
+    LIMIT $${paramNum};
+  `;
+
+  // Log the final query string for debugging purposes
+  console.log(queryString, queryParams);
+
+  // Run the query
+  return pool.query(queryString, queryParams).then((res) => res.rows);
 };
+
+
+
+
+
+
 
 /**
  * Add a property to the database
